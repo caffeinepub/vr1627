@@ -1,0 +1,239 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Font faces ─────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/assets/fonts/CabinetGrotesk-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Sora";
+  src: url("/assets/fonts/Sora-Variable.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/assets/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Design Tokens ──────────────────────────────────────────────────────── */
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* Dark-only palette — VR1627 premium editorial */
+    --background: 0.08 0 0;
+    --foreground: 0.96 0 0;
+    --card: 0.11 0 0;
+    --card-foreground: 0.96 0 0;
+    --popover: 0.13 0 0;
+    --popover-foreground: 0.96 0 0;
+    --primary: 0.62 0.19 250.5;
+    --primary-foreground: 0.98 0 0;
+    --secondary: 0.16 0 0;
+    --secondary-foreground: 0.85 0 0;
+    --muted: 0.14 0 0;
+    --muted-foreground: 0.55 0 0;
+    --accent: 0.62 0.19 250.5;
+    --accent-foreground: 0.98 0 0;
+    --destructive: 0.63 0.22 25;
+    --destructive-foreground: 0.98 0 0;
+    --border: 0.96 0 0 / 8%;
+    --input: 0.96 0 0 / 10%;
+    --ring: 0.62 0.19 250.5;
+
+    /* Custom semantic tokens */
+    --blue-glow: 0.62 0.19 250.5;
+    --surface-glass: 0.96 0 0 / 4%;
+    --surface-glass-hover: 0.96 0 0 / 8%;
+    --surface-glass-border: 0.96 0 0 / 12%;
+
+    --chart-1: 0.62 0.19 250.5;
+    --chart-2: 0.696 0.17 162.48;
+    --chart-3: 0.769 0.188 70.08;
+    --chart-4: 0.627 0.265 303.9;
+    --chart-5: 0.645 0.246 16.439;
+
+    --sidebar: 0.10 0 0;
+    --sidebar-foreground: 0.96 0 0;
+    --sidebar-primary: 0.62 0.19 250.5;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.14 0 0;
+    --sidebar-accent-foreground: 0.85 0 0;
+    --sidebar-border: 0.96 0 0 / 8%;
+    --sidebar-ring: 0.62 0.19 250.5;
+  }
+
+  /* Always dark */
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Sora", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+}
+
+/* ─── Utility classes ─────────────────────────────────────────────────────── */
+
+@layer utilities {
+  .font-display {
+    font-family: "Cabinet Grotesk", system-ui, sans-serif;
+  }
+
+  .font-mono-custom {
+    font-family: "Geist Mono", monospace;
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: oklch(var(--surface-glass));
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid oklch(var(--surface-glass-border));
+  }
+
+  .glass-hover:hover {
+    background: oklch(var(--surface-glass-hover));
+  }
+
+  /* Blue glow */
+  .glow-blue {
+    box-shadow: 0 0 30px -5px oklch(var(--blue-glow) / 40%),
+      0 0 60px -15px oklch(var(--blue-glow) / 20%);
+  }
+
+  .glow-blue-text {
+    text-shadow: 0 0 40px oklch(var(--blue-glow) / 60%);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(
+      135deg,
+      oklch(0.96 0 0) 0%,
+      oklch(0.75 0.1 250) 50%,
+      oklch(0.62 0.19 250.5) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Noise texture overlay */
+  .noise-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: 0.4;
+    border-radius: inherit;
+  }
+
+  /* Scroll reveal animation */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Video card hover */
+  .video-card {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .video-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 20px 60px -10px oklch(0 0 0 / 60%),
+      0 0 40px -15px oklch(var(--blue-glow) / 20%);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.3 0 0);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.4 0 0);
+  }
+}
+
+/* ─── Keyframes ──────────────────────────────────────────────────────────── */
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-12px) rotate(1deg); }
+  66% { transform: translateY(-6px) rotate(-1deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
