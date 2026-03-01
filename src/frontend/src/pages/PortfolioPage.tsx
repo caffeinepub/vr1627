@@ -3,12 +3,17 @@ import ContactSection from "../components/portfolio/ContactSection";
 import Footer from "../components/portfolio/Footer";
 import HeroSection from "../components/portfolio/HeroSection";
 import Navbar from "../components/portfolio/Navbar";
+import ResultsSection from "../components/portfolio/ResultsSection";
 import WorkSection from "../components/portfolio/WorkSection";
 import { useMetaTags } from "../hooks/useMetaTags";
-import { useGetVideos } from "../hooks/useQueries";
+import { useGetSiteText, useGetVideos } from "../hooks/useQueries";
+import { DEFAULT_SITE_TEXT } from "../lib/siteTextDefaults";
 
 export default function PortfolioPage() {
   const { data: videos = [], isLoading } = useGetVideos();
+  const { data: siteText } = useGetSiteText();
+
+  const text = siteText ?? DEFAULT_SITE_TEXT;
 
   useMetaTags({
     title: "VR1627 | Video Editor",
@@ -23,16 +28,17 @@ export default function PortfolioPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar />
+      <Navbar siteText={text} />
 
       <main>
-        <HeroSection />
-        <WorkSection videos={videos} isLoading={isLoading} />
-        <AboutSection />
-        <ContactSection />
+        <HeroSection siteText={text} />
+        <WorkSection videos={videos} isLoading={isLoading} siteText={text} />
+        <AboutSection siteText={text} />
+        <ResultsSection siteText={text} />
+        <ContactSection siteText={text} />
       </main>
 
-      <Footer />
+      <Footer siteText={text} />
     </div>
   );
 }

@@ -1,10 +1,17 @@
 import { User } from "lucide-react";
 import { useEffect, useRef } from "react";
+import type { SiteText } from "../../backend.d";
 import { useGetAboutMe } from "../../hooks/useQueries";
+import { DEFAULT_SITE_TEXT } from "../../lib/siteTextDefaults";
 import { ExternalBlob } from "../../utils/ExternalBlob";
 
-export default function AboutSection() {
-  const { data: about, isLoading } = useGetAboutMe();
+interface AboutSectionProps {
+  siteText?: SiteText;
+}
+
+export default function AboutSection({ siteText }: AboutSectionProps) {
+  const text = siteText ?? DEFAULT_SITE_TEXT;
+  const { data: about, isLoading, isError } = useGetAboutMe();
   const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -29,8 +36,8 @@ export default function AboutSection() {
     return () => observer.disconnect();
   }, []);
 
-  // Hide if not visible or loading with no data
-  if (!isLoading && (!about || !about.isVisible)) return null;
+  // Hide if not visible, errored, or loading with no data
+  if (!isLoading && (!about || !about.isVisible || isError)) return null;
 
   if (isLoading) {
     return (
@@ -64,14 +71,14 @@ export default function AboutSection() {
             <div className="flex items-center gap-2 text-primary">
               <User className="w-4 h-4" />
               <span className="font-mono-custom text-xs uppercase tracking-widest">
-                About
+                {text.aboutLabel}
               </span>
             </div>
             <div className="h-px flex-1 bg-border max-w-24" />
           </div>
 
           <h2 className="reveal font-display font-black text-[clamp(2.5rem,6vw,4rem)] leading-tight gradient-text">
-            The Editor
+            {text.aboutHeading}
           </h2>
         </div>
 
@@ -97,7 +104,11 @@ export default function AboutSection() {
                       "linear-gradient(135deg, oklch(0.14 0 0) 0%, oklch(0.18 0.04 250) 100%)",
                   }}
                 >
-                  <User className="w-20 h-20 text-muted-foreground/30" />
+                  <img
+                    src="/assets/generated/vr1627-logo-transparent.dim_200x200.png"
+                    alt="VR1627"
+                    className="w-48 h-48 rounded-full object-contain p-4"
+                  />
                 </div>
               </div>
             )}
@@ -122,9 +133,9 @@ export default function AboutSection() {
             {/* Stats row */}
             <div className="mt-10 grid grid-cols-3 gap-6">
               {[
-                { label: "Projects", value: "50+" },
-                { label: "Clients", value: "20+" },
-                { label: "Years Exp.", value: "5+" },
+                { label: text.stat1Label, value: text.stat1Value },
+                { label: text.stat2Label, value: text.stat2Value },
+                { label: text.stat3Label, value: text.stat3Value },
               ].map((stat) => (
                 <div
                   key={stat.label}

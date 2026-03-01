@@ -1,7 +1,14 @@
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef } from "react";
+import type { SiteText } from "../../backend.d";
+import { DEFAULT_SITE_TEXT } from "../../lib/siteTextDefaults";
 
-export default function HeroSection() {
+interface HeroSectionProps {
+  siteText?: SiteText;
+}
+
+export default function HeroSection({ siteText }: HeroSectionProps) {
+  const text = siteText ?? DEFAULT_SITE_TEXT;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -161,7 +168,7 @@ export default function HeroSection() {
             className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse-glow"
             aria-hidden="true"
           />
-          Available for projects
+          {text.heroBadge}
         </div>
 
         {/* Main heading */}
@@ -169,7 +176,7 @@ export default function HeroSection() {
           className="font-display font-black text-[clamp(5rem,15vw,10rem)] leading-none tracking-tight mb-4"
           style={{ animation: "fade-in 0.7s 0.1s ease both" }}
         >
-          <span className="gradient-text glow-blue-text">VR1627</span>
+          <span className="gradient-text glow-blue-text">{text.heroName}</span>
         </h1>
 
         {/* Subtitle */}
@@ -177,7 +184,7 @@ export default function HeroSection() {
           className="font-display text-[clamp(1.25rem,3vw,2rem)] text-muted-foreground font-medium tracking-widest uppercase mb-6"
           style={{ animation: "fade-in 0.7s 0.2s ease both" }}
         >
-          Video Editor
+          {text.heroSubtitle}
         </p>
 
         {/* Description */}
@@ -185,8 +192,7 @@ export default function HeroSection() {
           className="text-muted-foreground text-base md:text-lg max-w-xl mx-auto leading-relaxed mb-12"
           style={{ animation: "fade-in 0.7s 0.3s ease both" }}
         >
-          Crafting cinematic stories through precise cuts, dynamic pacing, and
-          visual storytelling. Every frame is intentional.
+          {text.heroDescription}
         </p>
 
         {/* CTA */}
@@ -199,7 +205,7 @@ export default function HeroSection() {
             onClick={scrollToWork}
             className="group relative px-8 py-3.5 bg-primary text-primary-foreground font-semibold rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-blue-glow overflow-hidden"
           >
-            <span className="relative z-10">View My Work</span>
+            <span className="relative z-10">{text.heroCta1}</span>
             <div className="absolute inset-0 bg-gradient-to-r from-primary to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
           <button
@@ -211,7 +217,7 @@ export default function HeroSection() {
             }
             className="px-8 py-3.5 glass text-foreground font-semibold rounded-2xl transition-all duration-300 hover:bg-white/10"
           >
-            Get in Touch
+            {text.heroCta2}
           </button>
         </div>
       </div>
@@ -225,7 +231,7 @@ export default function HeroSection() {
         style={{ animation: "fade-in 1s 0.8s ease both" }}
       >
         <span className="text-xs font-mono-custom tracking-widest uppercase">
-          Scroll
+          {text.heroScroll}
         </span>
         <ChevronDown className="w-4 h-4 animate-bounce" />
       </button>

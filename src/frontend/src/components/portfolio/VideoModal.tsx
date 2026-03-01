@@ -7,6 +7,20 @@ interface VideoModalProps {
   onClose: () => void;
 }
 
+function extractYoutubeId(url: string): string {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([^&\s?#]+)/,
+    /(?:youtu\.be\/)([^&\s?#/]+)/,
+    /(?:youtube\.com\/shorts\/)([^&\s?#/]+)/,
+    /(?:youtube\.com\/embed\/)([^&\s?#/]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return url; // fallback
+}
+
 export default function VideoModal({ video, onClose }: VideoModalProps) {
   useEffect(() => {
     if (!video) return;
@@ -25,10 +39,15 @@ export default function VideoModal({ video, onClose }: VideoModalProps) {
 
   if (!video) return null;
 
+  const effectiveYoutubeId = extractYoutubeId(
+    video.youtubeUrl || video.youtubeId,
+  );
+  const embedSrc = `https://www.youtube-nocookie.com/embed/${effectiveYoutubeId}?autoplay=1&rel=0&modestbranding=1&origin=${encodeURIComponent(window.location.origin)}`;
+
   return (
     <dialog
       open
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-transparent w-full h-full max-w-none max-h-none m-0 border-none"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-transparent w-full h-full max-w-none max-h-none m-0 border-none p-0"
       aria-label={video.title}
     >
       {/* Backdrop */}
@@ -41,36 +60,38 @@ export default function VideoModal({ video, onClose }: VideoModalProps) {
 
       {/* Modal */}
       <div
-        className="relative z-10 w-full max-w-4xl"
-        style={{ animation: "fade-in 0.3s ease both" }}
+        className="relative z-10 w-full mx-4 sm:mx-8"
+        style={{
+          animation: "fade-in 0.3s ease both",
+          maxWidth: "min(90vw, 900px)",
+        }}
       >
         {/* Close button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute -top-12 right-0 p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full glass"
+          className="absolute -top-11 right-0 p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full glass"
           aria-label="Close video"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Video container */}
-        <div
-          className="relative rounded-2xl overflow-hidden bg-black shadow-2xl"
-          style={{ aspectRatio: "16/9" }}
-        >
-          <iframe
-            src={`https://www.youtube.com/embed/${video.youtubeId}?autoplay=1&rel=0&modestbranding=1`}
-            title={video.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            className="absolute inset-0 w-full h-full"
-          />
+        {/* Video container — responsive 16:9 */}
+        <div className="relative w-full rounded-2xl overflow-hidden bg-black shadow-2xl">
+          <div style={{ paddingBottom: "56.25%" }} className="relative">
+            <iframe
+              src={embedSrc}
+              title={video.title}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+              allowFullScreen
+              className="absolute inset-0 w-full h-full border-0"
+            />
+          </div>
         </div>
 
         {/* Info */}
         <div className="mt-4 px-1">
-          <h2 className="font-display font-bold text-xl text-foreground">
+          <h2 className="font-display font-bold text-base sm:text-xl text-foreground">
             {video.title}
           </h2>
           {video.description && (

@@ -1,4 +1,12 @@
-export default function Footer() {
+import type { SiteText } from "../../backend.d";
+import { DEFAULT_SITE_TEXT } from "../../lib/siteTextDefaults";
+
+interface FooterProps {
+  siteText?: SiteText;
+}
+
+export default function Footer({ siteText }: FooterProps) {
+  const text = siteText ?? DEFAULT_SITE_TEXT;
   const year = new Date().getFullYear();
 
   return (
@@ -11,7 +19,7 @@ export default function Footer() {
             className="w-6 h-6 object-contain opacity-60"
           />
           <span className="text-muted-foreground text-sm font-mono-custom">
-            © {year} VR1627
+            © {year} {text.footerName}
           </span>
         </div>
 

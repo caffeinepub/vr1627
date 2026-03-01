@@ -1,6 +1,7 @@
 import { Film, Image, Play } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Category, type Video } from "../../backend.d";
+import { Category, type SiteText, type Video } from "../../backend.d";
+import { DEFAULT_SITE_TEXT } from "../../lib/siteTextDefaults";
 import PhotoGallery from "./PhotoGallery";
 import VideoCard from "./VideoCard";
 import VideoModal from "./VideoModal";
@@ -15,9 +16,15 @@ const CATEGORIES: Array<{ id: "all" | Category; label: string }> = [
 interface WorkSectionProps {
   videos: Video[];
   isLoading: boolean;
+  siteText?: SiteText;
 }
 
-export default function WorkSection({ videos, isLoading }: WorkSectionProps) {
+export default function WorkSection({
+  videos,
+  isLoading,
+  siteText,
+}: WorkSectionProps) {
+  const text = siteText ?? DEFAULT_SITE_TEXT;
   const [activeCategory, setActiveCategory] = useState<"all" | Category>("all");
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
@@ -74,18 +81,17 @@ export default function WorkSection({ videos, isLoading }: WorkSectionProps) {
             <div className="flex items-center gap-2 text-primary">
               <Film className="w-4 h-4" />
               <span className="font-mono-custom text-xs uppercase tracking-widest">
-                Portfolio
+                {text.workLabel}
               </span>
             </div>
             <div className="h-px flex-1 bg-border max-w-24" />
           </div>
 
           <h2 className="reveal font-display font-black text-[clamp(2.5rem,6vw,4rem)] leading-tight gradient-text mb-4">
-            Selected Work
+            {text.workHeading}
           </h2>
           <p className="reveal text-muted-foreground text-lg max-w-md">
-            A curated collection of video edits spanning cinematic, commercial,
-            and short-form content.
+            {text.workDescription}
           </p>
         </div>
 
@@ -148,17 +154,17 @@ export default function WorkSection({ videos, isLoading }: WorkSectionProps) {
             <div className="flex items-center gap-2 text-primary">
               <Image className="w-4 h-4" />
               <span className="font-mono-custom text-xs uppercase tracking-widest">
-                Gallery
+                {text.galleryLabel}
               </span>
             </div>
             <div className="h-px flex-1 bg-border max-w-24" />
           </div>
 
           <h3 className="reveal font-display font-black text-[clamp(2rem,5vw,3rem)] gradient-text mb-4">
-            Photography
+            {text.galleryHeading}
           </h3>
           <p className="reveal text-muted-foreground mb-10">
-            Behind the scenes and visual inspiration.
+            {text.galleryDescription}
           </p>
 
           <PhotoGallery />

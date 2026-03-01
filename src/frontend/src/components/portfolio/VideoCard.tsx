@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Play } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Category, Video } from "../../backend.d";
 
 const CATEGORY_LABELS: Record<Category, string> = {
@@ -8,6 +8,20 @@ const CATEGORY_LABELS: Record<Category, string> = {
   categoryLongVideos: "Long Videos",
   categoryClientWork: "Client Work",
 };
+
+function extractYoutubeId(url: string): string {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([^&\s?#]+)/,
+    /(?:youtu\.be\/)([^&\s?#/]+)/,
+    /(?:youtube\.com\/shorts\/)([^&\s?#/]+)/,
+    /(?:youtube\.com\/embed\/)([^&\s?#/]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return url; // fallback
+}
 
 interface VideoCardProps {
   video: Video;
@@ -20,76 +34,61 @@ export default function VideoCard({
   onClick,
   delay = 0,
 }: VideoCardProps) {
-  const [imgError, setImgError] = useState(false);
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const cardRef = useRef<HTMLButtonElement>(null);
 
-  const thumbnailUrl = imgError
-    ? null
-    : `https://img.youtube.com/vi/${video.youtubeId}/maxresdefault.jpg`;
+  const effectiveYoutubeId = extractYoutubeId(
+    video.youtubeUrl || video.youtubeId,
+  );
 
-  const fallbackUrl = imgError
-    ? null
-    : `https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg`;
+  const previewSrc = `https://www.youtube-nocookie.com/embed/${effectiveYoutubeId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${effectiveYoutubeId}&rel=0&modestbranding=1&playsinline=1&enablejsapi=0`;
+
+  // Play when in viewport, stop when scrolled away
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      { threshold: 0.1 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <button
+      ref={cardRef}
       type="button"
       className="reveal video-card group cursor-pointer text-left w-full"
       style={{ animationDelay: `${delay}ms`, transitionDelay: `${delay}ms` }}
       onClick={() => onClick(video)}
       aria-label={`Play: ${video.title}`}
     >
-      {/* Thumbnail */}
-      <div className="relative overflow-hidden rounded-2xl bg-muted aspect-video mb-3">
-        {/* Skeleton */}
-        {!imgLoaded && !imgError && (
-          <div className="absolute inset-0 bg-muted animate-pulse" />
-        )}
-
-        {thumbnailUrl && !imgError ? (
-          <img
-            src={thumbnailUrl}
-            alt={video.title}
-            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-              imgLoaded ? "opacity-100" : "opacity-0"
-            }`}
-            onLoad={() => setImgLoaded(true)}
-            onError={() => {
-              if (thumbnailUrl.includes("maxresdefault")) {
-                setImgLoaded(false);
-              } else {
-                setImgError(true);
-              }
-            }}
-            loading="lazy"
+      {/* Thumbnail / Autoplay preview */}
+      <div
+        className="relative overflow-hidden rounded-2xl bg-muted mb-3"
+        style={{ paddingBottom: "56.25%", height: 0 }}
+      >
+        {isVisible ? (
+          /* Autoplay muted preview — always on once in viewport */
+          <iframe
+            src={previewSrc}
+            title={`Preview: ${video.title}`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            tabIndex={-1}
           />
         ) : (
-          <div
-            className="w-full h-full flex items-center justify-center"
-            style={{
-              background:
-                "linear-gradient(135deg, oklch(0.14 0 0) 0%, oklch(0.18 0.04 250) 100%)",
-            }}
-          >
+          /* Placeholder while not yet visible */
+          <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-muted animate-pulse">
             <Play className="w-10 h-10 text-muted-foreground/40" />
           </div>
         )}
 
-        {/* Fallback for maxresdefault failures */}
-        {thumbnailUrl?.includes("maxresdefault") &&
-          imgLoaded === false &&
-          !imgError && (
-            <img
-              src={fallbackUrl ?? ""}
-              alt={video.title}
-              className="w-full h-full object-cover absolute inset-0"
-              onLoad={() => setImgLoaded(true)}
-              onError={() => setImgError(true)}
-            />
-          )}
-
-        {/* Play overlay */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+        {/* Click-to-open overlay */}
+        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
           <div className="w-14 h-14 rounded-full glass flex items-center justify-center glow-blue scale-75 group-hover:scale-100 transition-transform duration-300">
             <Play className="w-6 h-6 text-white fill-white ml-0.5" />
           </div>

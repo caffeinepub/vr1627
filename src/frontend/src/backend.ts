@@ -99,15 +99,12 @@ export interface Video {
     category: Category;
     youtubeUrl: string;
 }
+export interface UserProfile {
+    name: string;
+}
 export interface _CaffeineStorageRefillResult {
     success?: boolean;
     topped_up_amount?: bigint;
-}
-export interface ContactFormSubmission {
-    name: string;
-    submittedAt: bigint;
-    email: string;
-    message: string;
 }
 export interface _CaffeineStorageRefillInformation {
     proposed_top_up_amount?: bigint;
@@ -119,28 +116,73 @@ export interface NewVideoInput {
     category: Category;
     youtubeUrl: string;
 }
+export interface _CaffeineStorageCreateCertificateResult {
+    method: string;
+    blob_hash: string;
+}
+export interface ContactFormSubmission {
+    name: string;
+    submittedAt: bigint;
+    email: string;
+    message: string;
+}
 export interface AboutMe {
     bio: string;
     isVisible: boolean;
     profilePhotoBlobId?: string;
 }
-export interface _CaffeineStorageCreateCertificateResult {
-    method: string;
-    blob_hash: string;
+export interface SiteText {
+    stat1Label: string;
+    galleryDescription: string;
+    aboutHeading: string;
+    heroDescription: string;
+    workLabel: string;
+    navAbout: string;
+    stat2Value: string;
+    heroCta1: string;
+    heroCta2: string;
+    workHeading: string;
+    heroScroll: string;
+    heroName: string;
+    heroBadge: string;
+    heroSubtitle: string;
+    contactGetInTouch: string;
+    workDescription: string;
+    stat2Label: string;
+    contactSendMessage: string;
+    stat3Value: string;
+    contactLabel: string;
+    contactHeading: string;
+    navHome: string;
+    contactDescription: string;
+    aboutLabel: string;
+    navBrand: string;
+    navContact: string;
+    navWork: string;
+    stat1Value: string;
+    galleryLabel: string;
+    stat3Label: string;
+    galleryHeading: string;
+    footerName: string;
+}
+export interface ResultItem {
+    id: bigint;
+    title: string;
+    createdAt: bigint;
+    blobId: string;
+    category: string;
 }
 export interface ContactInfo {
     instagram: string;
     email: string;
     phone: string;
 }
-export interface UserProfile {
-    name: string;
-}
 export interface Photo {
     id: bigint;
     title: string;
     createdAt: bigint;
     blobId: string;
+    category: string;
 }
 export enum Category {
     categoryLongVideos = "categoryLongVideos",
@@ -160,11 +202,13 @@ export interface backendInterface {
     _caffeineStorageRefillCashier(refillInformation: _CaffeineStorageRefillInformation | null): Promise<_CaffeineStorageRefillResult>;
     _caffeineStorageUpdateGatewayPrincipals(): Promise<void>;
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
-    addPhoto(blobId: string, title: string): Promise<void>;
+    addPhoto(blobId: string, title: string, category: string): Promise<void>;
+    addResult(blobId: string, title: string, category: string): Promise<void>;
     addVideo(input: NewVideoInput): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     deleteContactFormSubmission(index: bigint): Promise<void>;
     deletePhoto(id: bigint): Promise<void>;
+    deleteResult(id: bigint): Promise<void>;
     deleteVideo(id: bigint): Promise<void>;
     getAboutMe(): Promise<AboutMe>;
     getCallerUserProfile(): Promise<UserProfile | null>;
@@ -172,7 +216,10 @@ export interface backendInterface {
     getContactFormSubmissions(): Promise<Array<ContactFormSubmission>>;
     getContactInfo(): Promise<ContactInfo>;
     getPhoto(id: bigint): Promise<Photo>;
+    getPhotoCategories(): Promise<Array<string>>;
     getPhotos(): Promise<Array<Photo>>;
+    getResults(): Promise<Array<ResultItem>>;
+    getSiteText(): Promise<SiteText>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getVideo(id: bigint): Promise<Video>;
     getVideos(): Promise<Array<Video>>;
@@ -181,6 +228,8 @@ export interface backendInterface {
     submitContactForm(name: string, email: string, message: string): Promise<void>;
     updateAboutMe(bio: string, profilePhotoBlobId: string | null, isVisible: boolean): Promise<void>;
     updateContactInfo(instagram: string, email: string, phone: string): Promise<void>;
+    updatePhotoCategories(newCategories: Array<string>): Promise<void>;
+    updateSiteText(newText: SiteText): Promise<void>;
     updateVideo(id: bigint, input: NewVideoInput): Promise<void>;
 }
 import type { AboutMe as _AboutMe, Category as _Category, NewVideoInput as _NewVideoInput, UserProfile as _UserProfile, UserRole as _UserRole, Video as _Video, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
@@ -284,17 +333,31 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addPhoto(arg0: string, arg1: string): Promise<void> {
+    async addPhoto(arg0: string, arg1: string, arg2: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addPhoto(arg0, arg1);
+                const result = await this.actor.addPhoto(arg0, arg1, arg2);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addPhoto(arg0, arg1);
+            const result = await this.actor.addPhoto(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async addResult(arg0: string, arg1: string, arg2: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addResult(arg0, arg1, arg2);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addResult(arg0, arg1, arg2);
             return result;
         }
     }
@@ -351,6 +414,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deletePhoto(arg0);
+            return result;
+        }
+    }
+    async deleteResult(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteResult(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteResult(arg0);
             return result;
         }
     }
@@ -452,6 +529,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async getPhotoCategories(): Promise<Array<string>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getPhotoCategories();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getPhotoCategories();
+            return result;
+        }
+    }
     async getPhotos(): Promise<Array<Photo>> {
         if (this.processError) {
             try {
@@ -463,6 +554,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getPhotos();
+            return result;
+        }
+    }
+    async getResults(): Promise<Array<ResultItem>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getResults();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getResults();
+            return result;
+        }
+    }
+    async getSiteText(): Promise<SiteText> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getSiteText();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getSiteText();
             return result;
         }
     }
@@ -575,6 +694,34 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateContactInfo(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async updatePhotoCategories(arg0: Array<string>): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updatePhotoCategories(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updatePhotoCategories(arg0);
+            return result;
+        }
+    }
+    async updateSiteText(arg0: SiteText): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateSiteText(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateSiteText(arg0);
             return result;
         }
     }

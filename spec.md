@@ -1,43 +1,67 @@
 # VR1627 Portfolio
 
 ## Current State
-New project. No existing code.
+Full-stack portfolio site with admin panel. Backend has Videos, Photos, AboutMe, ContactInfo, SiteText, and ContactForm modules. Frontend has PortfolioPage with Hero, Work (videos + photo gallery), About, and Contact sections. Admin panel has tabs: Videos, Photos, About, Contact, Submissions, Site Text.
+
+Known issues:
+- About section hides on error (getAboutMe traps if not set, causing the section to crash/hide)
+- Video cards set `isVisible = true` on first intersection and never unset it, so videos keep playing after scrolling away
+- Photo titles only show on hover (slide-up overlay), not permanently below the image
+- Photo gallery has no category/filter system
+- No "Results & Feedback" section for client screenshots and YT analytics
 
 ## Requested Changes (Diff)
 
 ### Add
-- Full-stack video editing portfolio website named "VR1627"
-- Admin authentication (login/logout) to protect the control panel
-- YouTube video management: add video by pasting URL, auto-extract thumbnail, set title, description, category (Shorts / Long Videos / Client Work), reorder, delete
-- Photo gallery management: upload photos directly, delete photos
-- About Me section: editable bio text, profile photo upload, hidden when empty
-- Contact section: editable Instagram link, email, phone number; public contact form (Name, Email, Message) with submissions stored in backend
-- Admin control panel: all content editable without coding
-- Public portfolio site: Home, Work, About, Contact navigation
-- Dark minimal premium design, Apple-inspired aesthetic, smooth animations, fully responsive
+- **Photo categories**: New `category` field on `Photo` type in backend (text string, free-form). Admin can assign a category when uploading. Gallery on portfolio shows category filter buttons (like video section). Admin can also create/manage photo categories list (stored separately in backend as a `[Text]`).
+- **Results & Feedback section**: New backend type `ResultItem` with fields: id, blobId, title, category (text: "Client Feedback" | "Result Screenshot" | "YT Analytics"), createdAt. CRUD endpoints: `addResult`, `getResults`, `deleteResult`. New portfolio section between About and Contact showing these screenshots in a clean grid. New admin tab "Results" for uploading screenshots with title + category.
+- **Default logo in About**: If `profilePhotoBlobId` is null/empty, show the site logo image (`/assets/generated/vr1627-logo-transparent.dim_200x200.png`) instead of the User icon placeholder.
+- **Photo category field in backend**: `Photo` type gets a `category` text field. `addPhoto` gets an extra `category: Text` parameter.
 
 ### Modify
-N/A (new project)
+- **About section bug fix**: Wrap `getAboutMe` in try/catch on frontend. If it throws (not set yet), return a fallback `AboutMe` object with `isVisible: false` instead of crashing. This means the section gracefully hides when not configured.
+- **Video scroll-away fix**: In `VideoCard`, track visibility with IntersectionObserver that also sets `isVisible = false` when card leaves viewport. When `isVisible` becomes false, the iframe is removed/unmounted so the video stops playing.
+- **Photo title always visible**: Remove the hover-only slide-up title overlay from `PhotoItem`. Show title as permanent text below each photo card (outside the image container, like video cards do).
+- **Photo gallery categories**: `PhotoGallery` component gets category filter buttons similar to the video section. Filters photos by the `category` field from backend.
+- **Admin photo tab**: Add category input field (text input) when uploading. Show category label on each photo card in admin grid.
 
 ### Remove
-N/A (new project)
+- Hover-only title overlay inside `PhotoItem` image container (replaced with permanent below-image text)
 
 ## Implementation Plan
+1. Update `main.mo` backend:
+   - Add `category: Text` to `Photo` type
+   - Update `addPhoto` signature to accept `category: Text`
+   - Add `photoCategories: [Text]` stored list with `getPhotoCategories`/`updatePhotoCategories` admin functions
+   - Add `ResultItem` type and `results` map with `addResult(blobId, title, category)`, `getResults()`, `deleteResult(id)` endpoints
 
-### Backend (Motoko)
-- Admin auth: single admin with password-protected login, session management
-- Video store: CRUD for video entries (id, youtubeUrl, youtubeId, title, description, category, order, createdAt)
-- Photo store: CRUD for photo blobs via blob-storage integration (id, blobId, title, createdAt)
-- About store: single record (bio, profilePhotoBlobId, isVisible)
-- Contact info store: single record (instagram, email, phone)
-- Contact form submissions: store incoming messages (name, email, message, timestamp)
-- All mutation endpoints require admin auth
+2. Update `backend.d.ts` to reflect new types and methods
 
-### Frontend
-- Public pages: Home (hero), Work (video grid + photo gallery), About, Contact
-- Single-page app with smooth scroll sections and animated nav
-- Video grid: YouTube thumbnails, category filter tabs, click to open fullscreen embed modal
-- Photo gallery: masonry/grid layout, lightbox on click
-- Admin panel (route /admin): login form → dashboard with tabs for Videos, Photos, About, Contact, Submissions
-- Responsive: mobile-first, tablet, desktop breakpoints
-- Favicon and footer "© VR1627"
+3. Fix `useGetAboutMe` hook: wrap with `retry: false` and catch errors gracefully (return null instead of throwing)
+
+4. Update `AboutSection.tsx`:
+   - Handle null/undefined `about` gracefully (don't show section)
+   - Replace User icon fallback with site logo image
+
+5. Fix `VideoCard.tsx`:
+   - Update IntersectionObserver to also set `isVisible = false` when card exits viewport (don't call `observer.disconnect()` on first entry)
+
+6. Update `PhotoItem` and `PhotoGallery`:
+   - Remove hover-overlay title, add permanent `<p>` below image
+   - Add category filter buttons in `PhotoGallery`
+   - Pass category through to filtering
+
+7. Update `AdminPhotoTab.tsx`:
+   - Add category text input field in upload form
+   - Pass category to `addPhoto` mutation
+   - Show category on photo cards in admin
+
+8. Create new `ResultsSection.tsx` portfolio component
+
+9. Create new `AdminResultsTab.tsx` admin component with upload + category selector + delete
+
+10. Add new hooks: `useGetResults`, `useAddResult`, `useDeleteResult`, `useGetPhotoCategories`, `useUpdatePhotoCategories`
+
+11. Wire `ResultsSection` into `PortfolioPage` between About and Contact
+
+12. Wire `AdminResultsTab` into `AdminPage` as new "Results" tab

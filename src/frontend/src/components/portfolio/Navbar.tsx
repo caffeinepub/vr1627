@@ -1,14 +1,17 @@
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import type { SiteText } from "../../backend.d";
+import { DEFAULT_SITE_TEXT } from "../../lib/siteTextDefaults";
 
-const NAV_LINKS = [
-  { label: "Home", href: "#home" },
-  { label: "Work", href: "#work" },
-  { label: "About", href: "#about" },
-  { label: "Contact", href: "#contact" },
-];
+export default function Navbar({ siteText }: { siteText?: SiteText }) {
+  const text = siteText ?? DEFAULT_SITE_TEXT;
 
-export default function Navbar() {
+  const NAV_LINKS = [
+    { label: text.navHome, href: "#home" },
+    { label: text.navWork, href: "#work" },
+    { label: text.navAbout, href: "#about" },
+    { label: text.navContact, href: "#contact" },
+  ];
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
@@ -65,11 +68,11 @@ export default function Navbar() {
           >
             <img
               src="/assets/generated/vr1627-logo-transparent.dim_200x200.png"
-              alt="VR1627"
+              alt={text.navBrand}
               className="w-8 h-8 object-contain"
             />
             <span className="font-display font-black text-lg tracking-tight gradient-text">
-              VR1627
+              {text.navBrand}
             </span>
           </button>
 

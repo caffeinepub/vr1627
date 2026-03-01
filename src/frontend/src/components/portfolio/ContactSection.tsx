@@ -5,12 +5,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Instagram, Mail, MessageSquare, Phone, Send } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import type { SiteText } from "../../backend.d";
 import {
   useGetContactInfo,
   useSubmitContactForm,
 } from "../../hooks/useQueries";
+import { DEFAULT_SITE_TEXT } from "../../lib/siteTextDefaults";
 
-export default function ContactSection() {
+interface ContactSectionProps {
+  siteText?: SiteText;
+}
+
+export default function ContactSection({ siteText }: ContactSectionProps) {
+  const text = siteText ?? DEFAULT_SITE_TEXT;
   const sectionRef = useRef<HTMLElement>(null);
   const { data: contact, isLoading: contactLoading } = useGetContactInfo();
   const submitMutation = useSubmitContactForm();
@@ -89,18 +96,17 @@ export default function ContactSection() {
             <div className="flex items-center gap-2 text-primary">
               <MessageSquare className="w-4 h-4" />
               <span className="font-mono-custom text-xs uppercase tracking-widest">
-                Contact
+                {text.contactLabel}
               </span>
             </div>
             <div className="h-px flex-1 bg-border max-w-24" />
           </div>
 
           <h2 className="reveal font-display font-black text-[clamp(2.5rem,6vw,4rem)] leading-tight gradient-text mb-4">
-            Let's Work Together
+            {text.contactHeading}
           </h2>
           <p className="reveal text-muted-foreground text-lg max-w-md">
-            Have a project in mind? I'd love to hear about it and see how we can
-            create something exceptional.
+            {text.contactDescription}
           </p>
         </div>
 
@@ -108,7 +114,7 @@ export default function ContactSection() {
           {/* Contact info */}
           <div className="reveal space-y-6">
             <h3 className="font-display font-bold text-xl text-foreground">
-              Get in Touch
+              {text.contactGetInTouch}
             </h3>
 
             {contactLoading ? (
@@ -154,7 +160,7 @@ export default function ContactSection() {
           {/* Contact form */}
           <form onSubmit={handleSubmit} className="reveal space-y-4" noValidate>
             <h3 className="font-display font-bold text-xl text-foreground">
-              Send a Message
+              {text.contactSendMessage}
             </h3>
 
             <div className="space-y-2">

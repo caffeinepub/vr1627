@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowLeft,
+  BarChart2,
   Film,
   Image,
   Loader2,
@@ -11,12 +12,15 @@ import {
   MessageSquare,
   Phone,
   Shield,
+  Type,
   User,
 } from "lucide-react";
 import { useState } from "react";
 import AdminAboutTab from "../components/admin/AdminAboutTab";
 import AdminContactTab from "../components/admin/AdminContactTab";
 import AdminPhotoTab from "../components/admin/AdminPhotoTab";
+import AdminResultsTab from "../components/admin/AdminResultsTab";
+import AdminSiteTextTab from "../components/admin/AdminSiteTextTab";
 import AdminSubmissionsTab from "../components/admin/AdminSubmissionsTab";
 import AdminVideoTab from "../components/admin/AdminVideoTab";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
@@ -115,9 +119,11 @@ function AccessDeniedScreen() {
 const TABS = [
   { id: "videos", label: "Videos", icon: Film },
   { id: "photos", label: "Photos", icon: Image },
+  { id: "results", label: "Results", icon: BarChart2 },
   { id: "about", label: "About", icon: User },
   { id: "contact", label: "Contact", icon: Phone },
   { id: "submissions", label: "Inbox", icon: MessageSquare },
+  { id: "sitetext", label: "Site Text", icon: Type },
 ];
 
 export default function AdminPage() {
@@ -218,6 +224,9 @@ export default function AdminPage() {
           <TabsContent value="photos">
             <AdminPhotoTab />
           </TabsContent>
+          <TabsContent value="results">
+            <AdminResultsTab />
+          </TabsContent>
           <TabsContent value="about">
             <AdminAboutTab />
           </TabsContent>
@@ -226,6 +235,9 @@ export default function AdminPage() {
           </TabsContent>
           <TabsContent value="submissions">
             <AdminSubmissionsTab />
+          </TabsContent>
+          <TabsContent value="sitetext">
+            <AdminSiteTextTab />
           </TabsContent>
         </Tabs>
       </main>

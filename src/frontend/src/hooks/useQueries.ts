@@ -5,6 +5,8 @@ import type {
   ContactInfo,
   NewVideoInput,
   Photo,
+  ResultItem,
+  SiteText,
   Video,
 } from "../backend.d";
 import { useActor } from "./useActor";
@@ -86,12 +88,39 @@ export function useAddPhoto() {
     mutationFn: async ({
       blobId,
       title,
-    }: { blobId: string; title: string }) => {
+      category,
+    }: { blobId: string; title: string; category: string }) => {
       if (!actor) throw new Error("Actor not available");
-      return actor.addPhoto(blobId, title);
+      return actor.addPhoto(blobId, title, category);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["photos"] });
+    },
+  });
+}
+
+export function useGetPhotoCategories() {
+  const { actor, isFetching } = useActor();
+  return useQuery<string[]>({
+    queryKey: ["photoCategories"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getPhotoCategories();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useUpdatePhotoCategories() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (newCategories: string[]) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.updatePhotoCategories(newCategories);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["photoCategories"] });
     },
   });
 }
@@ -110,17 +139,68 @@ export function useDeletePhoto() {
   });
 }
 
+// ─── Results ─────────────────────────────────────────────────────────────────
+
+export function useGetResults() {
+  const { actor, isFetching } = useActor();
+  return useQuery<ResultItem[]>({
+    queryKey: ["results"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getResults();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useAddResult() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      blobId,
+      title,
+      category,
+    }: { blobId: string; title: string; category: string }) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.addResult(blobId, title, category);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["results"] });
+    },
+  });
+}
+
+export function useDeleteResult() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.deleteResult(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["results"] });
+    },
+  });
+}
+
 // ─── About ───────────────────────────────────────────────────────────────────
 
 export function useGetAboutMe() {
   const { actor, isFetching } = useActor();
-  return useQuery<AboutMe>({
+  return useQuery<AboutMe | null>({
     queryKey: ["aboutMe"],
     queryFn: async () => {
-      if (!actor) throw new Error("Actor not available");
-      return actor.getAboutMe();
+      if (!actor) return null;
+      try {
+        return await actor.getAboutMe();
+      } catch {
+        return null;
+      }
     },
     enabled: !!actor && !isFetching,
+    retry: false,
   });
 }
 
@@ -224,6 +304,35 @@ export function useDeleteContactFormSubmission() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contactFormSubmissions"] });
+    },
+  });
+}
+
+// ─── Site Text ───────────────────────────────────────────────────────────────
+
+export function useGetSiteText() {
+  const { actor, isFetching } = useActor();
+  return useQuery<SiteText>({
+    queryKey: ["siteText"],
+    queryFn: async () => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.getSiteText();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+export function useUpdateSiteText() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (newText: SiteText) => {
+      if (!actor) throw new Error("Actor not available");
+      return actor.updateSiteText(newText);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["siteText"] });
     },
   });
 }

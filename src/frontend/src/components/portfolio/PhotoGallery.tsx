@@ -1,7 +1,7 @@
 import { Image, X, ZoomIn } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Photo } from "../../backend.d";
-import { useGetPhotos } from "../../hooks/useQueries";
+import { useGetPhotoCategories, useGetPhotos } from "../../hooks/useQueries";
 import { ExternalBlob } from "../../utils/ExternalBlob";
 
 function PhotoLightbox({
@@ -104,45 +104,62 @@ function PhotoItem({
   const [loaded, setLoaded] = useState(false);
 
   return (
-    <button
-      type="button"
-      className="reveal group relative overflow-hidden rounded-2xl cursor-pointer aspect-square bg-muted w-full text-left"
+    <div
+      className="reveal flex flex-col"
       style={{ transitionDelay: `${delay}ms` }}
-      onClick={onClick}
-      aria-label={`View photo: ${photo.title}`}
     >
-      {!loaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
-      <img
-        src={url}
-        alt={photo.title}
-        className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-          loaded ? "opacity-100" : "opacity-0"
-        }`}
-        loading="lazy"
-        onLoad={() => setLoaded(true)}
-      />
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-        <ZoomIn className="w-8 h-8 text-white" />
-      </div>
-      {photo.title && (
-        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-          <p className="text-white text-sm font-medium truncate">
-            {photo.title}
-          </p>
+      {/* Image container */}
+      <button
+        type="button"
+        className="group relative overflow-hidden rounded-2xl cursor-pointer aspect-square bg-muted w-full text-left"
+        onClick={onClick}
+        aria-label={`View photo: ${photo.title}`}
+      >
+        {!loaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
+        <img
+          src={url}
+          alt={photo.title}
+          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+            loaded ? "opacity-100" : "opacity-0"
+          }`}
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+        />
+        {/* Zoom overlay */}
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+          <ZoomIn className="w-8 h-8 text-white" />
         </div>
+      </button>
+
+      {/* Title below image */}
+      {photo.title && (
+        <p className="text-sm font-medium text-foreground mt-2 truncate px-1">
+          {photo.title}
+        </p>
       )}
-    </button>
+    </div>
   );
 }
 
 export default function PhotoGallery() {
   const { data: photos = [], isLoading } = useGetPhotos();
+  const { data: categories = [] } = useGetPhotoCategories();
+  const [activeCategory, setActiveCategory] = useState<string>("All");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  const lightboxPhoto = lightboxIndex !== null ? photos[lightboxIndex] : null;
+  // Filter photos by category
+  const filteredPhotos =
+    activeCategory === "All"
+      ? photos
+      : photos.filter((p) => p.category === activeCategory);
+
+  const lightboxPhoto =
+    lightboxIndex !== null ? filteredPhotos[lightboxIndex] : null;
   const lightboxUrl =
     lightboxIndex !== null
-      ? ExternalBlob.fromURL(photos[lightboxIndex]?.blobId ?? "").getDirectURL()
+      ? ExternalBlob.fromURL(
+          filteredPhotos[lightboxIndex]?.blobId ?? "",
+        ).getDirectURL()
       : "";
 
   if (isLoading) {
@@ -172,8 +189,31 @@ export default function PhotoGallery() {
 
   return (
     <>
+      {/* Category filter buttons */}
+      {categories.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {["All", ...categories].map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => {
+                setActiveCategory(cat);
+                setLightboxIndex(null);
+              }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                activeCategory === cat
+                  ? "bg-primary text-primary-foreground shadow-blue-glow"
+                  : "glass text-muted-foreground hover:text-foreground hover:bg-white/8"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {photos.map((photo, i) => (
+        {filteredPhotos.map((photo, i) => (
           <PhotoItem
             key={String(photo.id)}
             photo={photo}
@@ -189,12 +229,14 @@ export default function PhotoGallery() {
         onClose={() => setLightboxIndex(null)}
         onPrev={() =>
           setLightboxIndex((prev) =>
-            prev !== null ? (prev - 1 + photos.length) % photos.length : 0,
+            prev !== null
+              ? (prev - 1 + filteredPhotos.length) % filteredPhotos.length
+              : 0,
           )
         }
         onNext={() =>
           setLightboxIndex((prev) =>
-            prev !== null ? (prev + 1) % photos.length : 0,
+            prev !== null ? (prev + 1) % filteredPhotos.length : 0,
           )
         }
       />
