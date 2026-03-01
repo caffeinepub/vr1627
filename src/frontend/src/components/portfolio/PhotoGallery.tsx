@@ -1,5 +1,5 @@
 import { Image, X, ZoomIn } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Photo } from "../../backend.d";
 import { useGetPhotoCategories, useGetPhotos } from "../../hooks/useQueries";
 import { ExternalBlob } from "../../utils/ExternalBlob";
@@ -58,7 +58,7 @@ function PhotoLightbox({
         >
           <X className="w-5 h-5" />
         </button>
-        <div className="rounded-2xl overflow-hidden">
+        <div className="rounded-2xl overflow-hidden bg-zinc-800">
           <img
             src={url}
             alt={photo.title}
@@ -91,17 +91,57 @@ function PhotoLightbox({
   );
 }
 
-function PhotoItem({
-  photo,
-  onClick,
+/** A card that shows one photo from a group, cycling through on hover */
+function GroupedPhotoItem({
+  group,
+  onClickPhoto,
   delay,
 }: {
-  photo: Photo;
-  onClick: () => void;
+  group: Photo[];
+  onClickPhoto: (photo: Photo) => void;
   delay: number;
 }) {
-  const url = ExternalBlob.fromURL(photo.blobId).getDirectURL();
-  const [loaded, setLoaded] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [imageState, setImageState] = useState<"loading" | "loaded" | "error">(
+    "loading",
+  );
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const currentPhoto = group[activeIndex];
+  const url = ExternalBlob.fromURL(currentPhoto.blobId).getDirectURL();
+
+  // When activeIndex changes (hover cycle), reset image state for new photo
+  const prevIndexRef = useRef(activeIndex);
+  useEffect(() => {
+    if (prevIndexRef.current !== activeIndex) {
+      setImageState("loading");
+      prevIndexRef.current = activeIndex;
+    }
+  }, [activeIndex]);
+
+  const startCycle = () => {
+    if (group.length <= 1) return;
+    intervalRef.current = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % group.length);
+    }, 1200);
+  };
+
+  const stopCycle = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setActiveIndex(0);
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  const isMultiple = group.length > 1;
 
   return (
     <div
@@ -111,30 +151,80 @@ function PhotoItem({
       {/* Image container */}
       <button
         type="button"
-        className="group relative overflow-hidden rounded-2xl cursor-pointer aspect-square bg-muted w-full text-left"
-        onClick={onClick}
-        aria-label={`View photo: ${photo.title}`}
+        className="group relative overflow-hidden rounded-2xl cursor-pointer aspect-square w-full text-left"
+        style={{ background: "oklch(0.18 0 0)" }}
+        onClick={() => onClickPhoto(currentPhoto)}
+        onMouseEnter={startCycle}
+        onMouseLeave={stopCycle}
+        aria-label={`View photo: ${currentPhoto.title}${isMultiple ? ` (${group.length} images)` : ""}`}
       >
-        {!loaded && <div className="absolute inset-0 bg-muted animate-pulse" />}
+        {/* Loading skeleton */}
+        {imageState === "loading" && (
+          <div
+            className="absolute inset-0 animate-pulse rounded-2xl"
+            style={{ background: "oklch(0.22 0 0)" }}
+          />
+        )}
+
+        {/* Error placeholder */}
+        {imageState === "error" && (
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl"
+            style={{ background: "oklch(0.20 0 0)" }}
+          >
+            <Image className="w-8 h-8" style={{ color: "oklch(0.45 0 0)" }} />
+          </div>
+        )}
+
+        {/* Image */}
         <img
+          key={url}
           src={url}
-          alt={photo.title}
+          alt={currentPhoto.title}
           className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-            loaded ? "opacity-100" : "opacity-0"
+            imageState === "loaded" ? "opacity-100" : "opacity-0"
           }`}
           loading="lazy"
-          onLoad={() => setLoaded(true)}
+          onLoad={() => setImageState("loaded")}
+          onError={() => setImageState("error")}
         />
+
         {/* Zoom overlay */}
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
           <ZoomIn className="w-8 h-8 text-white" />
         </div>
+
+        {/* Multi-image badge */}
+        {isMultiple && (
+          <div className="absolute top-2 right-2 z-10">
+            <span className="px-2 py-0.5 rounded-full text-xs font-semibold glass border border-white/20 text-white/90 select-none">
+              {group.length} images
+            </span>
+          </div>
+        )}
+
+        {/* Dot indicators for multiple images */}
+        {isMultiple && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+            {group.map((_, idx) => (
+              <span
+                // biome-ignore lint/suspicious/noArrayIndexKey: dot indicators
+                key={idx}
+                className={`block rounded-full transition-all duration-300 ${
+                  idx === activeIndex
+                    ? "w-3 h-1.5 bg-white"
+                    : "w-1.5 h-1.5 bg-white/40"
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </button>
 
       {/* Title below image */}
-      {photo.title && (
+      {currentPhoto.title && (
         <p className="text-sm font-medium text-foreground mt-2 truncate px-1">
-          {photo.title}
+          {currentPhoto.title}
         </p>
       )}
     </div>
@@ -145,7 +235,9 @@ export default function PhotoGallery() {
   const { data: photos = [], isLoading } = useGetPhotos();
   const { data: categories = [] } = useGetPhotoCategories();
   const [activeCategory, setActiveCategory] = useState<string>("All");
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxPhoto, setLightboxPhoto] = useState<Photo | null>(null);
+  const [lightboxGroup, setLightboxGroup] = useState<Photo[]>([]);
+  const [lightboxGroupIndex, setLightboxGroupIndex] = useState(0);
 
   // Filter photos by category
   const filteredPhotos =
@@ -153,14 +245,49 @@ export default function PhotoGallery() {
       ? photos
       : photos.filter((p) => p.category === activeCategory);
 
-  const lightboxPhoto =
-    lightboxIndex !== null ? filteredPhotos[lightboxIndex] : null;
-  const lightboxUrl =
-    lightboxIndex !== null
-      ? ExternalBlob.fromURL(
-          filteredPhotos[lightboxIndex]?.blobId ?? "",
-        ).getDirectURL()
-      : "";
+  // Group photos by exact title
+  const groupMap = filteredPhotos.reduce(
+    (acc, photo) => {
+      const key = photo.title?.trim() ?? "";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(photo);
+      return acc;
+    },
+    {} as Record<string, Photo[]>,
+  );
+  const photoGroups = Object.values(groupMap);
+
+  // Open lightbox for a specific photo within its title group
+  const openLightbox = (photo: Photo) => {
+    const key = photo.title?.trim() ?? "";
+    const group = groupMap[key] ?? [photo];
+    const idxInGroup = group.findIndex((p) => p.id === photo.id);
+    setLightboxGroup(group);
+    setLightboxGroupIndex(idxInGroup >= 0 ? idxInGroup : 0);
+    setLightboxPhoto(photo);
+  };
+
+  const currentLightboxUrl = lightboxGroup[lightboxGroupIndex]
+    ? ExternalBlob.fromURL(
+        lightboxGroup[lightboxGroupIndex].blobId ?? "",
+      ).getDirectURL()
+    : "";
+
+  const handleLightboxPrev = () => {
+    setLightboxGroupIndex((prev) => {
+      const next = (prev - 1 + lightboxGroup.length) % lightboxGroup.length;
+      setLightboxPhoto(lightboxGroup[next]);
+      return next;
+    });
+  };
+
+  const handleLightboxNext = () => {
+    setLightboxGroupIndex((prev) => {
+      const next = (prev + 1) % lightboxGroup.length;
+      setLightboxPhoto(lightboxGroup[next]);
+      return next;
+    });
+  };
 
   if (isLoading) {
     return (
@@ -169,7 +296,8 @@ export default function PhotoGallery() {
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton list
             key={i}
-            className="aspect-square rounded-2xl bg-muted animate-pulse"
+            className="aspect-square rounded-2xl animate-pulse"
+            style={{ background: "oklch(0.22 0 0)" }}
           />
         ))}
       </div>
@@ -179,7 +307,10 @@ export default function PhotoGallery() {
   if (photos.length === 0) {
     return (
       <div className="text-center py-16 glass rounded-3xl">
-        <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-muted/50 flex items-center justify-center">
+        <div
+          className="w-14 h-14 mx-auto mb-3 rounded-2xl flex items-center justify-center"
+          style={{ background: "oklch(0.22 0 0)" }}
+        >
           <Image className="w-7 h-7 text-muted-foreground/40" />
         </div>
         <p className="text-muted-foreground">No photos yet</p>
@@ -198,7 +329,7 @@ export default function PhotoGallery() {
               type="button"
               onClick={() => {
                 setActiveCategory(cat);
-                setLightboxIndex(null);
+                setLightboxPhoto(null);
               }}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 activeCategory === cat
@@ -213,11 +344,11 @@ export default function PhotoGallery() {
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredPhotos.map((photo, i) => (
-          <PhotoItem
-            key={String(photo.id)}
-            photo={photo}
-            onClick={() => setLightboxIndex(i)}
+        {photoGroups.map((group, i) => (
+          <GroupedPhotoItem
+            key={`${group[0].title?.trim() ?? ""}-${group[0].id}`}
+            group={group}
+            onClickPhoto={openLightbox}
             delay={i * 40}
           />
         ))}
@@ -225,20 +356,14 @@ export default function PhotoGallery() {
 
       <PhotoLightbox
         photo={lightboxPhoto}
-        url={lightboxUrl}
-        onClose={() => setLightboxIndex(null)}
-        onPrev={() =>
-          setLightboxIndex((prev) =>
-            prev !== null
-              ? (prev - 1 + filteredPhotos.length) % filteredPhotos.length
-              : 0,
-          )
-        }
-        onNext={() =>
-          setLightboxIndex((prev) =>
-            prev !== null ? (prev + 1) % filteredPhotos.length : 0,
-          )
-        }
+        url={currentLightboxUrl}
+        onClose={() => {
+          setLightboxPhoto(null);
+          setLightboxGroup([]);
+          setLightboxGroupIndex(0);
+        }}
+        onPrev={handleLightboxPrev}
+        onNext={handleLightboxNext}
       />
     </>
   );

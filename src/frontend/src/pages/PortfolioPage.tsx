@@ -1,4 +1,3 @@
-import AboutSection from "../components/portfolio/AboutSection";
 import ContactSection from "../components/portfolio/ContactSection";
 import Footer from "../components/portfolio/Footer";
 import HeroSection from "../components/portfolio/HeroSection";
@@ -33,7 +32,6 @@ export default function PortfolioPage() {
       <main>
         <HeroSection siteText={text} />
         <WorkSection videos={videos} isLoading={isLoading} siteText={text} />
-        <AboutSection siteText={text} />
         <ResultsSection siteText={text} />
         <ContactSection siteText={text} />
       </main>

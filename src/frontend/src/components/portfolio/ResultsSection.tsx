@@ -1,5 +1,5 @@
-import { BarChart2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { BarChart2, ImageIcon, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { ResultItem, SiteText } from "../../backend.d";
 import { useGetResults } from "../../hooks/useQueries";
 import { DEFAULT_SITE_TEXT } from "../../lib/siteTextDefaults";
@@ -70,7 +70,7 @@ function ResultLightbox({
         >
           <X className="w-5 h-5" />
         </button>
-        <div className="rounded-2xl overflow-hidden">
+        <div className="rounded-2xl overflow-hidden bg-zinc-800">
           <img
             src={url}
             alt={item.title}
@@ -113,7 +113,21 @@ function ResultCard({
   delay: number;
 }) {
   const url = ExternalBlob.fromURL(item.blobId).getDirectURL();
-  const [loaded, setLoaded] = useState(false);
+  const [imageState, setImageState] = useState<"loading" | "loaded" | "error">(
+    "loading",
+  );
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Handle cached images: if img is already complete on mount, onLoad won't fire
+  useEffect(() => {
+    if (imgRef.current?.complete) {
+      if (imgRef.current.naturalWidth > 0) {
+        setImageState("loaded");
+      } else {
+        setImageState("error");
+      }
+    }
+  }, []);
 
   return (
     <div
@@ -123,26 +137,61 @@ function ResultCard({
       <button
         type="button"
         onClick={onClick}
-        className="group relative overflow-hidden rounded-2xl cursor-pointer aspect-video bg-muted w-full text-left"
+        className="group relative overflow-hidden rounded-2xl cursor-pointer aspect-video w-full text-left"
+        style={{ background: "oklch(0.18 0 0)" }}
         aria-label={`View: ${item.title}`}
       >
-        {!loaded && (
-          <div className="absolute inset-0 bg-muted animate-pulse rounded-2xl" />
+        {/* Loading skeleton — visible gray, not black */}
+        {imageState === "loading" && (
+          <div
+            className="absolute inset-0 animate-pulse rounded-2xl"
+            style={{ background: "oklch(0.22 0 0)" }}
+          />
         )}
-        <img
-          src={url}
-          alt={item.title}
-          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-            loaded ? "opacity-100" : "opacity-0"
-          }`}
-          loading="lazy"
-          onLoad={() => setLoaded(true)}
-        />
+
+        {/* Error / no-image placeholder */}
+        {imageState === "error" && (
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl"
+            style={{ background: "oklch(0.20 0 0)" }}
+          >
+            <ImageIcon
+              className="w-8 h-8"
+              style={{ color: "oklch(0.45 0 0)" }}
+            />
+            <span
+              className="text-xs font-medium"
+              style={{ color: "oklch(0.45 0 0)" }}
+            >
+              Preview
+            </span>
+          </div>
+        )}
+
+        {/* Actual image — always rendered so onLoad/onError fire.
+            ref + useEffect handles the cached-image case where onLoad never fires. */}
+        {url && (
+          <img
+            ref={imgRef}
+            src={url}
+            alt={item.title}
+            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
+              imageState === "loaded" ? "opacity-100" : "opacity-0"
+            }`}
+            loading="lazy"
+            onLoad={() => setImageState("loaded")}
+            onError={() => setImageState("error")}
+          />
+        )}
+
+        {/* Hover overlay */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full glass flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center glass">
             <BarChart2 className="w-5 h-5 text-white" />
           </div>
         </div>
+
+        {/* Category badge */}
         {item.category && (
           <div className="absolute top-3 left-3">
             <span className="px-2 py-1 rounded-full text-xs glass border border-white/10 text-foreground/80">
@@ -151,6 +200,7 @@ function ResultCard({
           </div>
         )}
       </button>
+
       {item.title && (
         <p className="text-sm font-medium text-foreground mt-2 truncate px-1">
           {item.title}
@@ -230,13 +280,17 @@ export default function ResultsSection({ siteText }: ResultsSectionProps) {
               <div
                 // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
                 key={i}
-                className="aspect-video rounded-2xl bg-muted animate-pulse"
+                className="aspect-video rounded-2xl animate-pulse"
+                style={{ background: "oklch(0.22 0 0)" }}
               />
             ))}
           </div>
         ) : filteredResults.length === 0 ? (
           <div className="text-center py-20 glass rounded-3xl">
-            <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
+            <div
+              className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+              style={{ background: "oklch(0.22 0 0)" }}
+            >
               <BarChart2 className="w-7 h-7 text-muted-foreground/40" />
             </div>
             <p className="text-muted-foreground font-medium">Coming soon</p>

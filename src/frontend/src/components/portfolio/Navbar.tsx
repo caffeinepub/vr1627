@@ -9,7 +9,7 @@ export default function Navbar({ siteText }: { siteText?: SiteText }) {
   const NAV_LINKS = [
     { label: text.navHome, href: "#home" },
     { label: text.navWork, href: "#work" },
-    { label: text.navAbout, href: "#about" },
+    { label: "Clients Feedback", href: "#results" },
     { label: text.navContact, href: "#contact" },
   ];
   const [scrolled, setScrolled] = useState(false);
@@ -20,7 +20,7 @@ export default function Navbar({ siteText }: { siteText?: SiteText }) {
     const onScroll = () => {
       setScrolled(window.scrollY > 40);
 
-      const sections = ["home", "work", "about", "contact"];
+      const sections = ["home", "work", "results", "contact"];
       let current = "home";
       for (const id of sections) {
         const el = document.getElementById(id);

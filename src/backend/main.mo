@@ -11,10 +11,10 @@ import Text "mo:core/Text";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
-import Migration "migration";
+
 
 // Run migration when upgrade/replacing canister.
-(with migration = Migration.run)
+
 actor {
   public type Category = {
     #categoryShorts;
