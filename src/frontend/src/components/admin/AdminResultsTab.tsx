@@ -1,3 +1,4 @@
+import ImageCropModal from "@/components/ui/ImageCropModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +50,9 @@ export default function AdminResultsTab() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Crop modal state
+  const [cropFile, setCropFile] = useState<File | null>(null);
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -68,11 +72,26 @@ export default function AdminResultsTab() {
       return;
     }
 
+    // Show crop modal before uploading
+    setCropFile(file);
+    // Reset file input so same file can be re-selected if needed
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleCropConfirm = async (croppedBlob: Blob) => {
+    setCropFile(null);
     setUploading(true);
     setUploadProgress(0);
 
     try {
-      const blobId = await uploadFile(file, "results", (pct) =>
+      // Convert blob to File to keep filename/type
+      const croppedFile = new File(
+        [croppedBlob],
+        cropFile?.name ?? "screenshot.jpg",
+        { type: croppedBlob.type || cropFile?.type || "image/jpeg" },
+      );
+
+      const blobId = await uploadFile(croppedFile, "results", (pct) =>
         setUploadProgress(pct),
       );
 
@@ -85,7 +104,6 @@ export default function AdminResultsTab() {
       toast.success("Screenshot uploaded successfully.");
       setTitle("");
       setCategory(RESULT_CATEGORIES[0]);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       console.error(err);
       toast.error("Failed to upload screenshot.");
@@ -93,6 +111,10 @@ export default function AdminResultsTab() {
       setUploading(false);
       setUploadProgress(0);
     }
+  };
+
+  const handleCropCancel = () => {
+    setCropFile(null);
   };
 
   const handleDelete = async (id: bigint) => {
@@ -106,6 +128,15 @@ export default function AdminResultsTab() {
 
   return (
     <div>
+      {/* Crop modal */}
+      {cropFile && (
+        <ImageCropModal
+          file={cropFile}
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
+        />
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="font-display font-bold text-2xl">
@@ -189,7 +220,7 @@ export default function AdminResultsTab() {
                   Click to upload a screenshot
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  PNG, JPG, WebP up to 20MB
+                  You can crop before uploading. PNG, JPG, WebP up to 20MB.
                 </p>
               </div>
             </label>
@@ -221,16 +252,16 @@ export default function AdminResultsTab() {
             const url = ExternalBlob.fromURL(item.blobId).getDirectURL();
             return (
               <div key={String(item.id)} className="group relative">
-                <div className="aspect-video rounded-xl overflow-hidden bg-muted">
+                <div className="rounded-xl overflow-hidden bg-muted">
                   <img
                     src={url}
                     alt={item.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-auto block"
                     loading="lazy"
                   />
                 </div>
                 {item.title && (
-                  <p className="mt-1 text-sm font-medium text-foreground truncate px-1">
+                  <p className="mt-2 text-sm font-semibold text-foreground px-1">
                     {item.title}
                   </p>
                 )}

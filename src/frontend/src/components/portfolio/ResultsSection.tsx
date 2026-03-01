@@ -1,11 +1,11 @@
-import { BarChart2, ImageIcon, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { BarChart2, X, ZoomIn } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ResultItem, SiteText } from "../../backend.d";
+import { useActor } from "../../hooks/useActor";
 import { useGetResults } from "../../hooks/useQueries";
 import { DEFAULT_SITE_TEXT } from "../../lib/siteTextDefaults";
-import { ExternalBlob } from "../../utils/ExternalBlob";
 
-const RESULT_CATEGORIES = [
+export const RESULT_CATEGORIES = [
   "All",
   "Client Feedback",
   "Result Screenshot",
@@ -16,15 +16,15 @@ interface ResultsSectionProps {
   siteText?: SiteText;
 }
 
+/* ─── Lightbox ──────────────────────────────────────────────────────────── */
+
 function ResultLightbox({
   item,
-  url,
   onClose,
   onPrev,
   onNext,
 }: {
   item: ResultItem | null;
-  url: string;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -52,14 +52,17 @@ function ResultLightbox({
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-transparent w-full h-full max-w-none max-h-none m-0 border-none"
       aria-label={item.title}
     >
+      {/* Backdrop */}
       <div
         role="presentation"
         className="absolute inset-0 bg-black/95 backdrop-blur-md"
         onClick={onClose}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
       />
+
+      {/* Content */}
       <div
-        className="relative z-10 max-w-4xl w-full"
+        className="relative z-10 w-full max-w-5xl"
         style={{ animation: "fade-in 0.3s ease both" }}
       >
         <button
@@ -70,18 +73,22 @@ function ResultLightbox({
         >
           <X className="w-5 h-5" />
         </button>
-        <div className="rounded-2xl overflow-hidden bg-zinc-800">
+
+        <div className="rounded-2xl overflow-hidden bg-zinc-900 max-h-[85vh] overflow-y-auto">
           <img
-            src={url}
+            src={item.blobId}
             alt={item.title}
-            className="w-full max-h-[80vh] object-contain"
+            className="w-full h-auto block"
+            style={{ display: "block", width: "100%", height: "auto" }}
           />
         </div>
+
         {item.title && (
-          <p className="text-center text-muted-foreground text-sm mt-3">
+          <p className="text-center text-muted-foreground text-sm mt-3 px-2">
             {item.title}
           </p>
         )}
+
         <div className="flex justify-between mt-4">
           <button
             type="button"
@@ -103,106 +110,132 @@ function ResultLightbox({
   );
 }
 
+/* ─── Result Card ────────────────────────────────────────────────────────── */
+
 function ResultCard({
   item,
   onClick,
-  delay,
+  index,
 }: {
   item: ResultItem;
   onClick: () => void;
-  delay: number;
+  index: number;
 }) {
-  const url = ExternalBlob.fromURL(item.blobId).getDirectURL();
-  const [imageState, setImageState] = useState<"loading" | "loaded" | "error">(
-    "loading",
-  );
-  const imgRef = useRef<HTMLImageElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
-  // Handle cached images: if img is already complete on mount, onLoad won't fire
+  // Scroll-reveal via IntersectionObserver
   useEffect(() => {
-    if (imgRef.current?.complete) {
-      if (imgRef.current.naturalWidth > 0) {
-        setImageState("loaded");
-      } else {
-        setImageState("error");
-      }
-    }
-  }, []);
+    const el = cardRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Stagger by index
+          const timer = setTimeout(() => setVisible(true), index * 80);
+          observer.disconnect();
+          return () => clearTimeout(timer);
+        }
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [index]);
 
   return (
     <div
-      className="reveal flex flex-col"
-      style={{ transitionDelay: `${delay}ms` }}
+      ref={cardRef}
+      className="flex flex-col"
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(28px)",
+        transition:
+          "opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)",
+      }}
     >
+      {/* Card wrapper — clickable */}
       <button
         type="button"
         onClick={onClick}
-        className="group relative overflow-hidden rounded-2xl cursor-pointer aspect-video w-full text-left"
-        style={{ background: "oklch(0.18 0 0)" }}
-        aria-label={`View: ${item.title}`}
+        className="group relative w-full text-left rounded-2xl overflow-hidden cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        style={{
+          background: "oklch(0.13 0 0)",
+          border: "1px solid oklch(0.96 0 0 / 8%)",
+          display: "block",
+        }}
+        aria-label={`View full size: ${item.title}`}
       >
-        {/* Loading skeleton — visible gray, not black */}
-        {imageState === "loading" && (
+        {/* Skeleton shown while loading */}
+        {!imgLoaded && !imgError && (
           <div
-            className="absolute inset-0 animate-pulse rounded-2xl"
-            style={{ background: "oklch(0.22 0 0)" }}
+            className="w-full animate-pulse"
+            style={{
+              background: "oklch(0.18 0 0)",
+              aspectRatio: "16 / 7",
+              minHeight: "160px",
+            }}
           />
         )}
 
-        {/* Error / no-image placeholder */}
-        {imageState === "error" && (
+        {/* Error fallback */}
+        {imgError && (
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl"
-            style={{ background: "oklch(0.20 0 0)" }}
+            className="w-full flex flex-col items-center justify-center gap-2 text-muted-foreground py-16"
+            style={{ background: "oklch(0.15 0 0)" }}
           >
-            <ImageIcon
-              className="w-8 h-8"
-              style={{ color: "oklch(0.45 0 0)" }}
-            />
-            <span
-              className="text-xs font-medium"
-              style={{ color: "oklch(0.45 0 0)" }}
-            >
-              Preview
-            </span>
+            <BarChart2 className="w-8 h-8 opacity-30" />
+            <span className="text-xs opacity-50">Image unavailable</span>
           </div>
         )}
 
-        {/* Actual image — always rendered so onLoad/onError fire.
-            ref + useEffect handles the cached-image case where onLoad never fires. */}
-        {url && (
-          <img
-            ref={imgRef}
-            src={url}
-            alt={item.title}
-            className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${
-              imageState === "loaded" ? "opacity-100" : "opacity-0"
-            }`}
-            loading="lazy"
-            onLoad={() => setImageState("loaded")}
-            onError={() => setImageState("error")}
-          />
+        {/* The actual image — always rendered so browser can load it */}
+        <img
+          src={item.blobId}
+          alt={item.title}
+          onLoad={() => setImgLoaded(true)}
+          onError={() => {
+            setImgError(true);
+            setImgLoaded(true);
+          }}
+          style={{
+            display: imgLoaded && !imgError ? "block" : "none",
+            width: "100%",
+            height: "auto",
+          }}
+          loading="lazy"
+          decoding="async"
+        />
+
+        {/* Hover overlay with zoom icon */}
+        {imgLoaded && !imgError && (
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/25 transition-all duration-300 flex items-center justify-center">
+            <div className="w-11 h-11 rounded-full glass flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 scale-90 group-hover:scale-100">
+              <ZoomIn className="w-5 h-5 text-white" />
+            </div>
+          </div>
         )}
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center glass">
-            <BarChart2 className="w-5 h-5 text-white" />
-          </div>
-        </div>
-
-        {/* Category badge */}
+        {/* Category badge — top left */}
         {item.category && (
           <div className="absolute top-3 left-3">
-            <span className="px-2 py-1 rounded-full text-xs glass border border-white/10 text-foreground/80">
+            <span
+              className="px-2.5 py-1 rounded-full text-xs font-medium glass border border-white/10 text-foreground/80"
+              style={{ backdropFilter: "blur(8px)" }}
+            >
               {item.category}
             </span>
           </div>
         )}
       </button>
 
+      {/* Title below image */}
       {item.title && (
-        <p className="text-sm font-medium text-foreground mt-2 truncate px-1">
+        <p className="text-sm font-semibold text-foreground mt-3 px-1 leading-snug">
           {item.title}
         </p>
       )}
@@ -210,9 +243,31 @@ function ResultCard({
   );
 }
 
+/* ─── Skeleton placeholder ───────────────────────────────────────────────── */
+
+function SkeletonCard({ index }: { index: number }) {
+  return (
+    <div
+      className="rounded-2xl overflow-hidden animate-pulse"
+      style={{
+        background: "oklch(0.15 0 0)",
+        border: "1px solid oklch(0.96 0 0 / 6%)",
+        aspectRatio: "16 / 7",
+        minHeight: "160px",
+        animationDelay: `${index * 120}ms`,
+      }}
+    />
+  );
+}
+
+/* ─── Main Section ───────────────────────────────────────────────────────── */
+
 export default function ResultsSection({ siteText }: ResultsSectionProps) {
   const _text = siteText ?? DEFAULT_SITE_TEXT;
-  const { data: results = [], isLoading } = useGetResults();
+  const { isFetching: isActorFetching } = useActor();
+  const { data: results = [], isLoading: isResultsLoading } = useGetResults();
+  const isLoading = isActorFetching || isResultsLoading;
+
   const [activeCategory, setActiveCategory] = useState("All");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -222,18 +277,28 @@ export default function ResultsSection({ siteText }: ResultsSectionProps) {
       : results.filter((r) => r.category === activeCategory);
 
   const lightboxItem =
-    lightboxIndex !== null ? filteredResults[lightboxIndex] : null;
-  const lightboxUrl =
-    lightboxIndex !== null
-      ? ExternalBlob.fromURL(
-          filteredResults[lightboxIndex]?.blobId ?? "",
-        ).getDirectURL()
-      : "";
+    lightboxIndex !== null ? (filteredResults[lightboxIndex] ?? null) : null;
+
+  const handlePrev = useCallback(() => {
+    setLightboxIndex((prev) =>
+      prev !== null
+        ? (prev - 1 + filteredResults.length) % filteredResults.length
+        : 0,
+    );
+  }, [filteredResults.length]);
+
+  const handleNext = useCallback(() => {
+    setLightboxIndex((prev) =>
+      prev !== null ? (prev + 1) % filteredResults.length : 0,
+    );
+  }, [filteredResults.length]);
+
+  const handleClose = useCallback(() => setLightboxIndex(null), []);
 
   return (
     <section id="results" className="py-24 md:py-32 px-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Section header */}
+      <div className="max-w-3xl mx-auto">
+        {/* ── Section header ── */}
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-4">
             <div className="flex items-center gap-2 text-primary">
@@ -252,8 +317,8 @@ export default function ResultsSection({ siteText }: ResultsSectionProps) {
           </p>
         </div>
 
-        {/* Category filters */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        {/* ── Category filters ── */}
+        <div className="flex flex-wrap gap-2 mb-10">
           {RESULT_CATEGORIES.map((cat) => (
             <button
               key={cat}
@@ -262,9 +327,9 @@ export default function ResultsSection({ siteText }: ResultsSectionProps) {
                 setActiveCategory(cat);
                 setLightboxIndex(null);
               }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
                 activeCategory === cat
-                  ? "bg-primary text-primary-foreground shadow-blue-glow"
+                  ? "bg-primary text-primary-foreground shadow-[0_0_20px_-5px_oklch(var(--blue-glow)/40%)]"
                   : "glass text-muted-foreground hover:text-foreground hover:bg-white/8"
               }`}
             >
@@ -273,23 +338,21 @@ export default function ResultsSection({ siteText }: ResultsSectionProps) {
           ))}
         </div>
 
-        {/* Content */}
+        {/* ── Content ── */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
-                key={i}
-                className="aspect-video rounded-2xl animate-pulse"
-                style={{ background: "oklch(0.22 0 0)" }}
-              />
+          /* Loading skeletons */
+          <div className="flex flex-col gap-8">
+            {Array.from({ length: 3 }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
+              <SkeletonCard key={i} index={i} />
             ))}
           </div>
         ) : filteredResults.length === 0 ? (
+          /* Empty state */
           <div className="text-center py-20 glass rounded-3xl">
             <div
               className="w-14 h-14 mx-auto mb-4 rounded-2xl flex items-center justify-center"
-              style={{ background: "oklch(0.22 0 0)" }}
+              style={{ background: "oklch(0.18 0 0)" }}
             >
               <BarChart2 className="w-7 h-7 text-muted-foreground/40" />
             </div>
@@ -299,35 +362,26 @@ export default function ResultsSection({ siteText }: ResultsSectionProps) {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          /* Single-column vertical stack — one screenshot per row */
+          <div className="flex flex-col gap-8">
             {filteredResults.map((item, i) => (
               <ResultCard
                 key={String(item.id)}
                 item={item}
                 onClick={() => setLightboxIndex(i)}
-                delay={i * 50}
+                index={i}
               />
             ))}
           </div>
         )}
       </div>
 
+      {/* ── Lightbox ── */}
       <ResultLightbox
         item={lightboxItem}
-        url={lightboxUrl}
-        onClose={() => setLightboxIndex(null)}
-        onPrev={() =>
-          setLightboxIndex((prev) =>
-            prev !== null
-              ? (prev - 1 + filteredResults.length) % filteredResults.length
-              : 0,
-          )
-        }
-        onNext={() =>
-          setLightboxIndex((prev) =>
-            prev !== null ? (prev + 1) % filteredResults.length : 0,
-          )
-        }
+        onClose={handleClose}
+        onPrev={handlePrev}
+        onNext={handleNext}
       />
     </section>
   );
